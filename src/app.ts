@@ -54,6 +54,22 @@ app.use((req, _res, next) => {
 // Mount API routes
 app.use('/api', apiRouter)
 
+// Root endpoint for API discovery & diagnostics
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'AUREUS Financial Advisor API',
+    status: 'online',
+    version: '1.0.0',
+    documentation: {
+      health: '/api/health',
+      analytics: '/api/analytics/calculate',
+      aiAdvisor: '/api/gemini',
+      billing: '/api/stripe-checkout',
+    },
+    message: 'Servicio de backend activo. La interfaz web de usuario se encuentra en http://localhost:5173',
+  })
+})
+
 // Fallback 404 Handler
 app.use((_req, res) => {
   res.status(404).json({

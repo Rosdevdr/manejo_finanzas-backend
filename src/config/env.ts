@@ -17,11 +17,21 @@ const envSchema = z.object({
   SUPABASE_SERVICE_KEY: z.string().optional().default(''),
 })
 
-const parsedEnv = envSchema.safeParse(process.env)
+const rawEnv = {
+  ...process.env,
+  CLIENT_URL: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
+  SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '',
+}
+
+const parsedEnv = envSchema.safeParse(rawEnv)
 
 if (!parsedEnv.success) {
   console.error('❌ Configuración de variables de entorno inválida:', parsedEnv.error.format())
   throw new Error('Variables de entorno incorrectas')
 }
 
-export const env = parsedEnv.data
+export const env = {
+  ...parsedEnv.data,
+  SUPABASE_SERVICE_ROLE_KEY: parsedEnv.data.SUPABASE_SERVICE_KEY,
+  FRONTEND_URL: parsedEnv.data.CLIENT_URL,
+}

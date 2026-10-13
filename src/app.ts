@@ -30,14 +30,8 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'stripe-signature'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
-)
-
-// Raw body parser ONLY for Stripe Webhook signature verification
-app.use(
-  '/api/stripe-webhook',
-  express.raw({ type: 'application/json' })
 )
 
 // JSON body parser for all other endpoints
@@ -64,7 +58,6 @@ app.get('/', (_req, res) => {
       health: '/api/health',
       analytics: '/api/analytics/calculate',
       aiAdvisor: '/api/gemini',
-      billing: '/api/stripe-checkout',
     },
     message: 'Servicio de backend activo. La interfaz web de usuario se encuentra en http://localhost:5173',
   })

@@ -25,18 +25,7 @@ export const geminiRequestSchema = z.object({
 
 export type GeminiRequestInput = z.infer<typeof geminiRequestSchema>
 
-// 2. Contrato API: Stripe Checkout Request
-export const stripeCheckoutSchema = z.object({
-  plan: z.enum(['personal', 'pro'], {
-    errorMap: () => ({ message: 'El plan debe ser personal o pro' }),
-  }),
-  userId: z.string().uuid('El userId debe ser un UUID válido de Supabase'),
-  userEmail: z.string().email('Email inválido').optional().or(z.literal('')),
-})
-
-export type StripeCheckoutInput = z.infer<typeof stripeCheckoutSchema>
-
-// 3. Contrato API: Data Engineering Analytics Query
+// 2. Contrato API: Data Engineering Analytics Query
 export const financialSummarySchema = z.object({
   incomes: z.array(
     z.object({

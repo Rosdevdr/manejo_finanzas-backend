@@ -1,7 +1,7 @@
 {
   "name": "aureus-backend",
   "version": "1.0.0",
-  "description": "AUREUS Wealth Advisor - Dedicated Financial Backend & Data Engineering API",
+  "description": "AUREUS - Zero-friction household finance assistant: chat-based expense capture and bill reminders",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -14,14 +14,15 @@
     "lint": "eslint src --ext .ts"
   },
   "keywords": [
-    "fintech",
+    "personal-finance",
+    "chatbot",
+    "telegram",
     "backend",
     "data-engineering",
-    "qa",
+    "hexagonal-architecture",
     "express",
     "typescript",
-    "gemini",
-    "stripe",
+    "postgresql",
     "supabase"
   ],
   "author": "Rosdevdr",
@@ -31,7 +32,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "stripe": "^17.7.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

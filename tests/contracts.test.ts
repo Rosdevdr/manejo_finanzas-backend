@@ -3,37 +3,20 @@ import request from 'supertest'
 import { app } from '../src/app.js'
 
 describe('QA Suite: API Contract & Schema Enforcement', () => {
-  it('POST /api/stripe-checkout debe fallar si falta el userId o si no es UUID', async () => {
+  it('POST /api/gemini debe fallar si el payload no tiene el formato esperado', async () => {
     const res = await request(app)
-      .post('/api/stripe-checkout')
-      .send({
-        plan: 'pro',
-        userId: 'not-a-valid-uuid',
-      })
-
-    expect(res.status).toBe(400)
-    expect(res.body.status).toBe('fail')
-    expect(res.body.error).toContain('validación')
-  })
-
-  it('POST /api/stripe-checkout debe fallar con plan inválido', async () => {
-    const res = await request(app)
-      .post('/api/stripe-checkout')
-      .send({
-        plan: 'enterprise_ultra',
-        userId: '123e4567-e89b-12d3-a456-426614174000',
-      })
+      .post('/api/gemini')
+      .send({ model: 'gemini-flash-latest' })
 
     expect(res.status).toBe(400)
     expect(res.body.status).toBe('fail')
   })
 
-  it('POST /api/stripe-webhook debe fallar si no se envía firma', async () => {
-    const res = await request(app)
-      .post('/api/stripe-webhook')
-      .send({ dummy: 'data' })
+  it('Las rutas de Stripe ya no existen (monetización retirada)', async () => {
+    const checkout = await request(app).post('/api/stripe-checkout').send({})
+    const webhook = await request(app).post('/api/stripe-webhook').send({})
 
-    expect(res.status).toBe(400)
-    expect(res.body.error).toContain('stripe-signature')
+    expect(checkout.status).toBe(404)
+    expect(webhook.status).toBe(404)
   })
 })

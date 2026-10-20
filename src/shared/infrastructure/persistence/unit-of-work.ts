@@ -27,7 +27,7 @@ export function getDbExecutor(fallbackPool?: pg.Pool): pg.Pool | pg.PoolClient {
 }
 
 export class PgUnitOfWork implements IUnitOfWork {
-  constructor(private readonly pool: pg.Pool = getDbPool()) {}
+  constructor(private readonly pool: pg.Pool = getDbPool()) { }
 
   public async execute<T>(work: () => Promise<T>): Promise<T> {
     // Si ya existe una transacción activa en el contexto async (UoW anidado), reutilizarla

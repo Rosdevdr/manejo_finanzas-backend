@@ -12,6 +12,8 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_SERVICE_KEY: z.string().optional().default(''),
   DATABASE_URL: z.string().optional().default('postgresql://postgres:postgres@localhost:5432/postgres'),
+  TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional().default(''),
 })
 
 const rawEnv = {

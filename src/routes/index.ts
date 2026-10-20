@@ -15,6 +15,7 @@ import { creditRouter } from './credit.routes.js'
 import { budgetsRouter } from './budgets.routes.js'
 import { goalsRouter } from './goals.routes.js'
 import { dashboardRouter } from './dashboard.routes.js'
+import { webhooksRouter } from './webhooks.routes.js'
 
 export const apiRouter = Router()
 
@@ -33,3 +34,7 @@ apiRouter.use('/credit', creditRouter)
 apiRouter.use('/budgets', budgetsRouter)
 apiRouter.use('/goals', goalsRouter)
 apiRouter.use('/dashboard', dashboardRouter)
+
+// Messaging Webhooks (Telegram Bot API / WhatsApp)
+apiRouter.use('/webhooks', webhooksRouter)
+

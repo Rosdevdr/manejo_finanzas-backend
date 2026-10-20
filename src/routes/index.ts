@@ -16,6 +16,7 @@ import { budgetsRouter } from './budgets.routes.js'
 import { goalsRouter } from './goals.routes.js'
 import { dashboardRouter } from './dashboard.routes.js'
 import { webhooksRouter } from './webhooks.routes.js'
+import { sentinelRouter } from './sentinel.routes.js'
 
 export const apiRouter = Router()
 
@@ -37,4 +38,8 @@ apiRouter.use('/dashboard', dashboardRouter)
 
 // Messaging Webhooks (Telegram Bot API / WhatsApp)
 apiRouter.use('/webhooks', webhooksRouter)
+
+// Centinela Anti-Moras (Recurring Commitments & Bill Protection)
+apiRouter.use('/sentinel', sentinelRouter)
+
 

@@ -11,6 +11,7 @@ const envSchema = z.object({
   VITE_APP_URL: z.string().optional().default('http://localhost:5173'),
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_SERVICE_KEY: z.string().optional().default(''),
+  DATABASE_URL: z.string().optional().default('postgresql://postgres:postgres@localhost:5432/postgres'),
 })
 
 const rawEnv = {

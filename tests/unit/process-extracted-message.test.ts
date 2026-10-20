@@ -217,4 +217,57 @@ describe('Application: ProcessExtractedMessageUseCase (Etapa 3 ACID)', () => {
       })
     ).rejects.toThrow(InvalidExtractedDataError)
   })
+
+  it('concilia automáticamente con el Centinela Anti-Moras e incluye nota de ahorro en el Outbox', async () => {
+    const event = InboxEvent.createReceived({
+      provider: 'telegram',
+      externalChatId: 'chat-456',
+      externalMessageId: 'msg-789',
+      senderId: 'user-001',
+      messageType: 'text',
+      rawPayload: { text: '2350 de luz edesur' },
+    })
+    event.markExtracted({
+      extractedData: {
+        items: [
+          { amount: '2350.00', description: 'Pago de luz Edesur', kind: 'expense' },
+        ],
+      },
+      aiModel: 'gemini-flash-latest',
+      promptVersion: 'v1.0.0',
+      confidenceScore: 0.98,
+    })
+    mockInboxRepo.findById.mockResolvedValueOnce(event)
+
+
+    const mockMatchPaymentUseCase = {
+      execute: vi.fn().mockResolvedValue({
+        matched: true,
+        commitmentName: 'Luz Edesur',
+        savedLateFeeFormatted: 'DOP $600.00',
+      }),
+    }
+
+    const useCase = new ProcessExtractedMessageUseCase(
+      mockInboxRepo as unknown as IInboxRepository,
+      mockLedgerRepo as unknown as ILedgerRepository,
+      mockOutboxRepo as unknown as IOutboxRepository,
+      mockUnitOfWork,
+      mockMatchPaymentUseCase as any
+    )
+
+    const result = await useCase.execute({
+      inboxEventId: event.getId(),
+      householdId: dummyHouseholdId,
+      userId: dummyUserId,
+    })
+
+    expect(result.success).toBe(true)
+    expect(mockMatchPaymentUseCase.execute).toHaveBeenCalledTimes(1)
+    expect(mockOutboxRepo.enqueue).toHaveBeenCalledTimes(1)
+    const enqueuedMsg = mockOutboxRepo.enqueue.mock.calls[0][0]
+    expect(enqueuedMsg.getPayload().text).toContain('Luz Edesur')
+    expect(enqueuedMsg.getPayload().text).toContain('DOP $600.00')
+  })
 })
+

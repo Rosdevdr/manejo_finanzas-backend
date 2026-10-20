@@ -11,6 +11,11 @@ export interface UserIdentity {
   currency: string
 }
 
+export interface HouseholdChannel {
+  provider: ChannelProvider
+  recipientId: string
+}
+
 export interface IIdentityRepository {
   /**
    * Busca la identidad de usuario y hogar vinculada al canal externo (Telegram/WhatsApp).
@@ -26,4 +31,10 @@ export interface IIdentityRepository {
     externalUserId: string,
     fullName?: string
   ): Promise<UserIdentity>
+
+  /**
+   * Encuentra el canal primario de mensajería (Telegram/WhatsApp) para un hogar dado.
+   */
+  findPrimaryChannelForHousehold(householdId: string): Promise<HouseholdChannel | null>
 }
+

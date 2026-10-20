@@ -79,4 +79,24 @@ export class PgIdentityRepository implements IIdentityRepository {
       currency,
     }
   }
+
+  public async findPrimaryChannelForHousehold(
+    householdId: string
+  ): Promise<{ provider: ChannelProvider; recipientId: string } | null> {
+    const query = `
+      SELECT ic.provider, ic.external_user_id
+      FROM identity_channels ic
+      JOIN users u ON u.id = ic.user_id
+      WHERE u.household_id = $1
+      ORDER BY ic.created_at ASC
+      LIMIT 1;
+    `
+    const res = await this.client.query(query, [householdId])
+    if (res.rows.length === 0) return null
+    return {
+      provider: res.rows[0].provider,
+      recipientId: res.rows[0].external_user_id,
+    }
+  }
 }
+

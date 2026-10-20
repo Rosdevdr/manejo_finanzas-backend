@@ -25,6 +25,11 @@ export class Money {
     return new Money(cents, currency)
   }
 
+  public static create(cents: number | bigint, currency: SupportedCurrency = 'DOP'): Money {
+    return new Money(Number(cents), currency)
+  }
+
+
   /**
    * Parsea de forma determinista una cadena de texto (ej: "1200.50", "1,200", "-50.25")
    * evitando errores de redondeo de punto flotante de IEEE-754 (como Math.round(1.005 * 100) = 100).
@@ -101,6 +106,11 @@ export class Money {
     const prefix = this.cents < 0 ? '-' : ''
     return `${prefix}${this.currency} $${formattedNumber}`
   }
+
+  public format(): string {
+    return this.toFormattedString()
+  }
+
 
   public add(other: Money): Money {
     this.assertSameCurrency(other)

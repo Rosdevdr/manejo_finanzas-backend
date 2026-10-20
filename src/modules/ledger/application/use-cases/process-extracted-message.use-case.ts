@@ -11,6 +11,8 @@ import { OutboxMessage } from '../../../messaging/domain/entities/outbox-message
 import { Money, type SupportedCurrency } from '../../../../shared/domain/value-objects/money.vo.js'
 import { DomainError } from '../../../../shared/domain/errors/domain.error.js'
 
+import type { MatchPaymentToCommitmentUseCase } from '../../../sentinel/application/use-cases/match-payment-to-commitment.use-case.js'
+
 export class InboxEventNotFoundError extends DomainError {
   constructor(id: string) {
     super(`No se encontró el evento de inbox con ID: ${id}`)
@@ -49,8 +51,10 @@ export class ProcessExtractedMessageUseCase {
     private readonly inboxRepo: IInboxRepository,
     private readonly ledgerRepo: ILedgerRepository,
     private readonly outboxRepo: IOutboxRepository,
-    private readonly unitOfWork: IUnitOfWork
+    private readonly unitOfWork: IUnitOfWork,
+    private readonly matchPaymentUseCase?: MatchPaymentToCommitmentUseCase
   ) {}
+
 
   public async execute(command: ProcessExtractedMessageCommand): Promise<ProcessExtractedMessageResult> {
     const { inboxEventId, householdId, userId } = command
@@ -126,10 +130,31 @@ export class ProcessExtractedMessageUseCase {
       // 3.3 Persistir el lote en el Ledger inmutable
       await this.ledgerRepo.appendBatch(ledgerEntries)
 
-      // 3.4 Generar el mensaje de confirmación para el usuario
-      const replyText = this.buildReplyText(ledgerEntries, runningTotal)
+      // 3.4 Conciliación automática con el Centinela Anti-Moras si está habilitado
+      const sentinelNotes: string[] = []
+      if (this.matchPaymentUseCase) {
+        for (const entry of ledgerEntries) {
+          if (entry.getKind() === 'expense') {
+            const match = await this.matchPaymentUseCase.execute({
+              householdId,
+              ledgerEntryId: entry.getId(),
+              description: entry.getDescription(),
+              amount: entry.getAmount(),
+              transactedAt: entry.getTransactedAt(),
+            })
+            if (match.matched) {
+              sentinelNotes.push(
+                `🛡️ Factura de "${match.commitmentName}" marcada como pagada. ¡Te ahorraste ${match.savedLateFeeFormatted} en moras! 🎉`
+              )
+            }
+          }
+        }
+      }
 
-      // 3.5 Encolar en Outbox para despacho confiable (at-least-once)
+      // 3.5 Generar el mensaje de confirmación para el usuario
+      const replyText = this.buildReplyText(ledgerEntries, runningTotal, sentinelNotes)
+
+      // 3.6 Encolar en Outbox para despacho confiable (at-least-once)
       const outboxMsg = OutboxMessage.create({
         sourceEventId: event.getId(),
         provider: event.getProvider(),
@@ -177,13 +202,21 @@ export class ProcessExtractedMessageUseCase {
     return validItems
   }
 
-  private buildReplyText(entries: LedgerEntry[], total: Money): string {
+  private buildReplyText(entries: LedgerEntry[], total: Money, notes: string[] = []): string {
     const lines = entries.map(e => `• ${e.getDescription()}: ${e.getAmount().toFormattedString()}`)
 
+    let baseText = ''
     if (entries.length === 1) {
-      return `✅ Registrado en el hogar:\n${lines[0]}`
+      baseText = `✅ Registrado en el hogar:\n${lines[0]}`
+    } else {
+      baseText = `✅ Registrado en el hogar:\n${lines.join('\n')}\n─────────────────\nTotal: ${total.toFormattedString()}`
     }
 
-    return `✅ Registrado en el hogar:\n${lines.join('\n')}\n─────────────────\nTotal: ${total.toFormattedString()}`
+    if (notes.length > 0) {
+      baseText += `\n\n${notes.join('\n')}`
+    }
+
+    return baseText
   }
 }
+

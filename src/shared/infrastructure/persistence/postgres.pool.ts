@@ -14,14 +14,15 @@ export function getDbPool(): pg.Pool {
     const isProduction = env.NODE_ENV === 'production'
     const connectionString = env.DATABASE_URL
 
-    const isSupabase = connectionString?.includes('supabase.co')
+    const isSupabase =
+      connectionString?.includes('supabase.co') || connectionString?.includes('supabase.com')
 
     globalPool = new Pool({
       connectionString,
       ssl: isProduction || isSupabase ? { rejectUnauthorized: false } : undefined,
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 10000,
     })
 
     globalPool.on('error', (err) => {

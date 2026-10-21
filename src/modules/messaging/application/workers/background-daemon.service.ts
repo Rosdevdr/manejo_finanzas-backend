@@ -10,12 +10,37 @@ export interface BackgroundDaemonConfig {
   sentinelScanIntervalMs?: number // Default: 1 hora (3600000ms)
 }
 
+export function extractErrorMessage(err: unknown): string {
+  if (!err) return 'Error desconocido'
+  if (err instanceof Error) {
+    if (err.message && err.message.trim().length > 0) return err.message
+    const maybeCode = (err as Record<string, unknown>).code
+    const maybeErrors = (err as Record<string, unknown>).errors
+    if (Array.isArray(maybeErrors) && maybeErrors.length > 0) {
+      return maybeErrors
+        .map(e => (e instanceof Error ? e.message : (e as Record<string, unknown>)?.message || (e as Record<string, unknown>)?.code || String(e)))
+        .join(', ')
+    }
+    if (maybeCode) return `Fallo de conexión (${maybeCode})`
+    return err.name || 'Error desconocido'
+  }
+  if (typeof err === 'object') {
+    const errObj = err as Record<string, unknown>
+    if (typeof errObj.message === 'string' && errObj.message) return errObj.message
+    if (errObj.code) return `Fallo de conexión (${errObj.code})`
+    return JSON.stringify(err)
+  }
+  return String(err)
+}
+
 export class BackgroundDaemonService {
   private isRunning = false
   private outboxTimer: NodeJS.Timeout | null = null
   private sentinelTimer: NodeJS.Timeout | null = null
   private isDispatching = false
   private isScanning = false
+  private consecutiveOutboxErrors = 0
+  private lastOutboxErrorMsg: string | null = null
 
   constructor(
     private readonly outboxWorker: OutboxDispatcherWorker,
@@ -78,12 +103,27 @@ export class BackgroundDaemonService {
 
     try {
       const result = await this.outboxWorker.dispatchPendingBatch(10)
+      this.consecutiveOutboxErrors = 0
+      this.lastOutboxErrorMsg = null
+
       if (result.sentCount > 0) {
         console.log(`[AUREUS Daemon] ${result.sentCount} mensaje(s) de outbox despachados exitosamente.`)
       }
       return { dispatched: result.sentCount }
     } catch (err: unknown) {
-      console.error('[AUREUS Daemon] Error en bucle de Outbox:', (err as Error).message)
+      this.consecutiveOutboxErrors++
+      const errMsg = extractErrorMessage(err)
+
+      // Throttle log: solo loguear el 1er error, cambios de mensaje, o cada 15 ciclos (para no inundar la consola)
+      if (
+        this.consecutiveOutboxErrors === 1 ||
+        this.consecutiveOutboxErrors % 15 === 0 ||
+        errMsg !== this.lastOutboxErrorMsg
+      ) {
+        const attemptsNotice = this.consecutiveOutboxErrors > 1 ? ` (${this.consecutiveOutboxErrors} intentos)` : ''
+        console.error(`[AUREUS Daemon] Error en bucle de Outbox${attemptsNotice}:`, errMsg)
+        this.lastOutboxErrorMsg = errMsg
+      }
       return { dispatched: 0 }
     } finally {
       this.isDispatching = false
@@ -107,7 +147,8 @@ export class BackgroundDaemonService {
       }
       return { alertsGenerated: result.alertsGeneratedCount }
     } catch (err: unknown) {
-      console.error('[AUREUS Daemon] Error en escaneo Centinela:', (err as Error).message)
+      const errMsg = extractErrorMessage(err)
+      console.error('[AUREUS Daemon] Error en escaneo Centinela:', errMsg)
       return { alertsGenerated: 0 }
     } finally {
       this.isScanning = false

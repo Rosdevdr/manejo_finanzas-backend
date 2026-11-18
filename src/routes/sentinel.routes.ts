@@ -9,8 +9,97 @@ import { PgIdentityRepository } from '../modules/messaging/infrastructure/persis
 import { PgOutboxRepository } from '../modules/messaging/infrastructure/persistence/pg-outbox.repository.js'
 import { RegisterCommitmentUseCase } from '../modules/sentinel/application/use-cases/register-commitment.use-case.js'
 import { SentinelScanUseCase } from '../modules/sentinel/application/use-cases/sentinel-scan.use-case.js'
+import { requireAuth } from '../middleware/auth.js'
+import { sentinelService } from '../services/sentinel.service.js'
 
 export const sentinelRouter = Router()
+
+const userCommitmentSchema = z.object({
+  id: z.string().min(1).optional(),
+  name: z.string().min(1, 'El nombre es requerido').max(60),
+  contract_number: z.string().max(50).optional(),
+  category: z.enum(['electric', 'telecom', 'card', 'education', 'water', 'other']).default('other'),
+  amount: z.number().positive('El monto debe ser positivo'),
+  late_fee_avoided: z.number().min(0).default(0),
+  due_day: z.number().int().min(1).max(31),
+  due_date_str: z.string().max(30).optional(),
+  status: z.enum(['pending', 'paid', 'urgent']).default('pending'),
+  paid_period: z.string().max(7).nullable().optional(),
+})
+
+const userCommitmentUpdateSchema = userCommitmentSchema.partial()
+
+// ==============================================================================
+// RUTAS MULTI-USUARIO AUTHENTICATED (THIN-CLIENT DASHBOARD / SUPABASE)
+// ==============================================================================
+
+sentinelRouter.get('/user/commitments', requireAuth, async (req, res) => {
+  try {
+    const items = await sentinelService.list(req.userId!)
+    res.json({ status: 'success', data: items })
+  } catch (err: unknown) {
+    res.status(500).json({ status: 'error', error: (err as Error).message })
+  }
+})
+
+sentinelRouter.post('/user/commitments', requireAuth, async (req, res) => {
+  try {
+    const parsed = userCommitmentSchema.safeParse(req.body)
+    if (!parsed.success) {
+      res.status(400).json({ status: 'fail', errors: parsed.error.format() })
+      return
+    }
+    const created = await sentinelService.create(req.userId!, parsed.data)
+    res.status(201).json({ status: 'success', data: created })
+  } catch (err: unknown) {
+    res.status(500).json({ status: 'error', error: (err as Error).message })
+  }
+})
+
+sentinelRouter.patch('/user/commitments/:id', requireAuth, async (req, res) => {
+  try {
+    const parsed = userCommitmentUpdateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      res.status(400).json({ status: 'fail', errors: parsed.error.format() })
+      return
+    }
+    const updated = await sentinelService.update(req.userId!, req.params.id, parsed.data)
+    if (!updated) {
+      res.status(404).json({ status: 'fail', error: 'Compromiso no encontrado' })
+      return
+    }
+    res.json({ status: 'success', data: updated })
+  } catch (err: unknown) {
+    res.status(500).json({ status: 'error', error: (err as Error).message })
+  }
+})
+
+sentinelRouter.post('/user/commitments/:id/pay', requireAuth, async (req, res) => {
+  try {
+    const paidPeriod = typeof req.body?.paid_period === 'string' ? req.body.paid_period : undefined
+    const updated = await sentinelService.markPaid(req.userId!, req.params.id, paidPeriod)
+    if (!updated) {
+      res.status(404).json({ status: 'fail', error: 'Compromiso no encontrado' })
+      return
+    }
+    res.json({ status: 'success', data: updated })
+  } catch (err: unknown) {
+    res.status(500).json({ status: 'error', error: (err as Error).message })
+  }
+})
+
+sentinelRouter.delete('/user/commitments/:id', requireAuth, async (req, res) => {
+  try {
+    const deleted = await sentinelService.remove(req.userId!, req.params.id)
+    if (!deleted) {
+      res.status(404).json({ status: 'fail', error: 'Compromiso no encontrado' })
+      return
+    }
+    res.json({ status: 'success', message: 'Compromiso eliminado' })
+  } catch (err: unknown) {
+    res.status(500).json({ status: 'error', error: (err as Error).message })
+  }
+})
 
 const sentinelRepo = new PgSentinelRepository()
 const identityRepo = new PgIdentityRepository()

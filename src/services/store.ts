@@ -12,6 +12,7 @@ export interface InMemoryStoreData {
   creditTransactions: any[]
   categoryBudgets: any[]
   savingsGoals: any[]
+  sentinelCommitments: any[]
 }
 
 class InMemoryStore {
@@ -27,6 +28,7 @@ class InMemoryStore {
         creditTransactions: [],
         categoryBudgets: [],
         savingsGoals: [],
+        sentinelCommitments: [],
       })
     }
     return this.userStores.get(userId)!
